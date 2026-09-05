@@ -1,0 +1,922 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPI Shield - QR Payment Detector</title>
+
+<!-- QR Decoder -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, #153b69 0, transparent 35%),
+        radial-gradient(circle at bottom right, #172554 0, transparent 35%),
+        #07111f;
+    color: #fff;
+}
+
+header {
+    padding: 22px 7%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    background: rgba(5,15,30,.7);
+    backdrop-filter: blur(15px);
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.logo span {
+    color: #29e6a5;
+}
+
+.badge {
+    padding: 8px 15px;
+    border-radius: 20px;
+    background: rgba(41,230,165,.12);
+    color: #29e6a5;
+    border: 1px solid rgba(41,230,165,.3);
+    font-size: 13px;
+}
+
+.hero {
+    text-align: center;
+    padding: 55px 20px 30px;
+}
+
+.hero h1 {
+    font-size: clamp(34px, 6vw, 62px);
+    margin-bottom: 15px;
+}
+
+.hero h1 span {
+    color: #29e6a5;
+}
+
+.hero p {
+    max-width: 720px;
+    margin: auto;
+    color: #9fb0c5;
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.container {
+    width: min(1100px, 92%);
+    margin: 30px auto 70px;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.card {
+    background: rgba(13,28,48,.82);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+
+.card h2 {
+    margin-bottom: 8px;
+}
+
+.card-description {
+    color: #8497ae;
+    font-size: 14px;
+    margin-bottom: 22px;
+}
+
+.upload-area {
+    border: 2px dashed #36506d;
+    border-radius: 18px;
+    padding: 35px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: .3s;
+}
+
+.upload-area:hover {
+    border-color: #29e6a5;
+    background: rgba(41,230,165,.04);
+}
+
+.upload-icon {
+    font-size: 45px;
+    margin-bottom: 12px;
+}
+
+.upload-area strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.upload-area small {
+    color: #71859d;
+}
+
+input[type=file] {
+    display: none;
+}
+
+.preview {
+    margin-top: 20px;
+    display: none;
+    text-align: center;
+}
+
+.preview img {
+    width: 180px;
+    height: 180px;
+    object-fit: contain;
+    background: white;
+    padding: 10px;
+    border-radius: 12px;
+}
+
+button {
+    width: 100%;
+    border: none;
+    padding: 14px;
+    margin-top: 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #29e6a5;
+    color: #04130e;
+    font-weight: 800;
+    font-size: 15px;
+    transition: .2s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(41,230,165,.2);
+}
+
+button.secondary {
+    background: #172a42;
+    color: white;
+}
+
+label {
+    display: block;
+    color: #9fb0c5;
+    font-size: 13px;
+    margin: 15px 0 7px;
+}
+
+input, select {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #304761;
+    background: #0a192b;
+    color: white;
+    outline: none;
+}
+
+input:focus, select:focus {
+    border-color: #29e6a5;
+}
+
+.result {
+    margin-top: 25px;
+    padding: 25px;
+    border-radius: 18px;
+    display: none;
+}
+
+.result.safe {
+    background: rgba(41,230,165,.1);
+    border: 1px solid rgba(41,230,165,.35);
+}
+
+.result.warning {
+    background: rgba(255,190,60,.1);
+    border: 1px solid rgba(255,190,60,.35);
+}
+
+.result.danger {
+    background: rgba(255,75,90,.1);
+    border: 1px solid rgba(255,75,90,.35);
+}
+
+.result-title {
+    font-size: 25px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.score {
+    font-size: 45px;
+    font-weight: 900;
+    margin: 10px 0;
+}
+
+.details {
+    margin-top: 18px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    font-size: 14px;
+}
+
+.detail-row span:first-child {
+    color: #8195ad;
+}
+
+#qrCanvas {
+    display: none;
+}
+
+.stats {
+    margin-top: 25px;
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 15px;
+}
+
+.stat {
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+}
+
+.stat-number {
+    font-size: 25px;
+    font-weight: 800;
+    color: #29e6a5;
+}
+
+.stat-label {
+    color: #73869c;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+footer {
+    text-align: center;
+    color: #62768d;
+    font-size: 13px;
+    padding: 30px;
+}
+
+.disclaimer {
+    margin-top: 25px;
+    padding: 15px;
+    background: rgba(255,190,60,.08);
+    border: 1px solid rgba(255,190,60,.2);
+    border-radius: 12px;
+    color: #c5b487;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+@media(max-width: 800px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    header {
+        padding: 18px 5%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">UPI<span>Shield</span></div>
+    <div class="badge">● DEMO MODE</div>
+</header>
+
+<section class="hero">
+    <h1>UPI QR <span>Fraud Detector</span></h1>
+    <p>
+        Upload a UPI QR code or enter transaction information
+        to demonstrate how a payment-security system could
+        identify suspicious payment details.
+    </p>
+</section>
+
+<div class="container">
+
+    <div class="dashboard">
+
+        <!-- QR SCANNER -->
+        <div class="card">
+
+            <h2>🔍 Scan UPI QR</h2>
+            <p class="card-description">
+                Upload a QR-code image for analysis.
+            </p>
+
+            <label for="qrFile" class="upload-area">
+
+                <div class="upload-icon">📷</div>
+
+                <strong>
+                    Click to upload QR image
+                </strong>
+
+                <small>
+                    PNG, JPG or JPEG
+                </small>
+
+            </label>
+
+            <input
+                id="qrFile"
+                type="file"
+                accept="image/*"
+            >
+
+            <div class="preview" id="preview">
+                <img id="previewImage">
+            </div>
+
+            <button onclick="analyzeQR()">
+                Analyze QR Code
+            </button>
+
+            <div id="qrResult" class="result"></div>
+
+        </div>
+
+
+        <!-- TRANSACTION CHECKER -->
+        <div class="card">
+
+            <h2>💳 Transaction Analyzer</h2>
+
+            <p class="card-description">
+                Enter sample payment information for the presentation.
+            </p>
+
+            <label>UPI ID</label>
+
+            <input
+                id="upi"
+                type="text"
+                placeholder="example@upi"
+            >
+
+            <label>Transaction Amount</label>
+
+            <input
+                id="amount"
+                type="number"
+                placeholder="Enter amount"
+            >
+
+            <label>Transaction ID</label>
+
+            <input
+                id="transaction"
+                type="text"
+                placeholder="TXN123456789"
+            >
+
+            <label>Payment Status</label>
+
+            <select id="status">
+                <option value="success">Payment Successful</option>
+                <option value="pending">Payment Pending</option>
+                <option value="failed">Payment Failed</option>
+            </select>
+
+            <button onclick="analyzeTransaction()">
+                Check Payment
+            </button>
+
+            <div id="transactionResult" class="result"></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DEMO STATS -->
+
+    <div class="stats">
+
+        <div class="stat">
+            <div class="stat-number">99%</div>
+            <div class="stat-label">
+                Demo Detection Accuracy
+            </div>
+        </div>
+
+        <div class="stat">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">
+                Security Monitoring
+            </div>
+        </div>
+
+        <div class="stat">
+            <div class="stat-number">AI</div>
+            <div class="stat-label">
+                Risk Analysis Concept
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="disclaimer">
+        ⚠️ <b>College Presentation Demo:</b>
+        This website is a front-end simulation. It does not connect
+        to banks, NPCI, UPI servers, or payment gateways and cannot
+        independently confirm whether real money was transferred.
+        A real verification system would require authorized payment
+        gateway/bank APIs and server-side verification.
+    </div>
+
+</div>
+
+<footer>
+    UPIShield • Payment Security Project • College Demonstration
+</footer>
+
+
+<canvas id="qrCanvas"></canvas>
+
+
+<script>
+
+let selectedImage = null;
+
+
+/* =========================
+   IMAGE PREVIEW
+========================= */
+
+document.getElementById("qrFile").addEventListener("change", function(e) {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    selectedImage = file;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        document.getElementById("previewImage").src =
+            event.target.result;
+
+        document.getElementById("preview").style.display =
+            "block";
+    };
+
+    reader.readAsDataURL(file);
+
+});
+
+
+/* =========================
+   QR ANALYSIS
+========================= */
+
+function analyzeQR() {
+
+    const result = document.getElementById("qrResult");
+
+    if (!selectedImage) {
+
+        showResult(
+            result,
+            "warning",
+            "⚠️ No QR Code",
+            "Please upload a QR-code image first.",
+            0
+        );
+
+        return;
+    }
+
+    const img = new Image();
+
+    img.onload = function() {
+
+        const canvas = document.getElementById("qrCanvas");
+
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.drawImage(img, 0, 0);
+
+        const imageData =
+            ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+        const code =
+            jsQR(
+                imageData.data,
+                imageData.width,
+                imageData.height
+            );
+
+        if (!code) {
+
+            showResult(
+                result,
+                "danger",
+                "❌ QR Not Detected",
+                "The uploaded image does not contain a readable QR code.",
+                12
+            );
+
+            return;
+        }
+
+
+        const qrData = code.data;
+
+        /*
+         * UPI QR codes commonly contain:
+         * upi://pay?pa=merchant@upi&pn=Merchant&am=100
+         */
+
+        if (
+            qrData.toLowerCase().startsWith("upi://pay")
+        ) {
+
+            const params =
+                new URLSearchParams(
+                    qrData.split("?")[1]
+                );
+
+            const pa =
+                params.get("pa") || "Unknown";
+
+            const pn =
+                params.get("pn") || "Unknown";
+
+            const am =
+                params.get("am") || "Not specified";
+
+
+            /*
+             * DEMO RISK RULES
+             */
+
+            let score = 90;
+
+            let reasons = [];
+
+            if (!pa.includes("@")) {
+
+                score -= 35;
+
+                reasons.push(
+                    "UPI ID format looks unusual."
+                );
+
+            }
+
+            if (am === "Not specified") {
+
+                score -= 5;
+
+                reasons.push(
+                    "QR does not contain a fixed amount."
+                );
+
+            }
+
+            if (pa.toLowerCase().includes("test") ||
+                pa.toLowerCase().includes("fake")) {
+
+                score -= 60;
+
+                reasons.push(
+                    "Suspicious demo identifier detected."
+                );
+
+            }
+
+            if (score >= 70) {
+
+                showResult(
+                    result,
+                    "safe",
+                    "🟢 LOW RISK",
+                    "UPI payment QR structure appears valid for this demonstration.",
+                    score,
+                    [
+                        ["UPI ID", pa],
+                        ["Merchant", pn],
+                        ["Amount", am],
+                        ["QR Type", "UPI Payment"],
+                        ["Risk Level", "Low"]
+                    ]
+                );
+
+            } else {
+
+                showResult(
+                    result,
+                    "warning",
+                    "🟠 SUSPICIOUS",
+                    "The QR contains characteristics that this demo considers suspicious.",
+                    score,
+                    [
+                        ["UPI ID", pa],
+                        ["Merchant", pn],
+                        ["Amount", am],
+                        ["Risk Level", "Medium"]
+                    ]
+                );
+            }
+
+        } else {
+
+            showResult(
+                result,
+                "danger",
+                "🔴 NOT A UPI QR",
+                "A QR code was detected, but it does not appear to contain a UPI payment URI.",
+                20
+            );
+
+        }
+
+    };
+
+    img.src = URL.createObjectURL(selectedImage);
+
+}
+
+
+/* =========================
+   TRANSACTION ANALYZER
+========================= */
+
+function analyzeTransaction() {
+
+    const upi =
+        document.getElementById("upi").value.trim();
+
+    const amount =
+        Number(
+            document.getElementById("amount").value
+        );
+
+    const txn =
+        document.getElementById("transaction").value.trim();
+
+    const status =
+        document.getElementById("status").value;
+
+    const result =
+        document.getElementById("transactionResult");
+
+
+    if (!upi || !amount || !txn) {
+
+        showResult(
+            result,
+            "warning",
+            "⚠️ Missing Information",
+            "Please enter UPI ID, amount and transaction ID.",
+            0
+        );
+
+        return;
+    }
+
+
+    let score = 100;
+
+    let reasons = [];
+
+
+    /* UPI FORMAT */
+
+    if (!upi.includes("@")) {
+
+        score -= 35;
+
+        reasons.push(
+            "UPI ID format appears invalid."
+        );
+
+    }
+
+
+    /* TRANSACTION ID */
+
+    if (txn.length < 8) {
+
+        score -= 20;
+
+        reasons.push(
+            "Transaction ID is unusually short."
+        );
+
+    }
+
+
+    /* PAYMENT STATUS */
+
+    if (status === "failed") {
+
+        score = 5;
+
+        reasons.push(
+            "Payment status is marked as failed."
+        );
+
+    }
+
+    if (status === "pending") {
+
+        score = Math.min(score, 55);
+
+        reasons.push(
+            "Payment is still pending."
+        );
+
+    }
+
+
+    /* HIGH AMOUNT DEMO RULE */
+
+    if (amount > 50000) {
+
+        score -= 10;
+
+        reasons.push(
+            "High-value transaction requires additional verification."
+        );
+
+    }
+
+
+    let level;
+    let title;
+    let message;
+    let css;
+
+
+    if (status === "failed") {
+
+        level = "danger";
+        title = "🔴 PAYMENT FAILED";
+        message =
+            "The transaction status indicates that the payment was not successful.";
+
+    }
+
+    else if (status === "pending") {
+
+        level = "warning";
+        title = "🟠 PAYMENT PENDING";
+        message =
+            "The transaction should not be treated as confirmed until verified by an authorized payment system.";
+
+    }
+
+    else if (score >= 70) {
+
+        level = "safe";
+        title = "🟢 LOW RISK";
+        message =
+            "The entered transaction passes this demonstration's basic security checks.";
+
+    }
+
+    else {
+
+        level = "danger";
+        title = "🔴 HIGH RISK";
+        message =
+            "The transaction contains suspicious characteristics in this demonstration.";
+
+    }
+
+
+    showResult(
+        result,
+        level,
+        title,
+        message,
+        score,
+        [
+            ["UPI ID", upi],
+            ["Amount", "₹" + amount.toLocaleString("en-IN")],
+            ["Transaction ID", txn],
+            ["Payment Status", status.toUpperCase()],
+            ["Risk Score", score + "/100"]
+        ]
+    );
+
+}
+
+
+/* =========================
+   RESULT UI
+========================= */
+
+function showResult(
+    element,
+    type,
+    title,
+    message,
+    score,
+    details = []
+) {
+
+    element.className =
+        "result " + type;
+
+    let html = `
+        <div class="result-title">${title}</div>
+
+        <p>${message}</p>
+
+        ${
+            score > 0
+            ?
+            `<div class="score">${score}/100</div>
+             <small>Demo security confidence score</small>`
+            :
+            ""
+        }
+
+        <div class="details">
+    `;
+
+
+    details.forEach(function(item) {
+
+        html += `
+            <div class="detail-row">
+                <span>${item[0]}</span>
+                <strong>${item[1]}</strong>
+            </div>
+        `;
+
+    });
+
+
+    html += `
+        </div>
+
+        <p style="
+            margin-top:15px;
+            color:#7f92a8;
+            font-size:11px;
+        ">
+        Demo result only — not a real bank/payment verification.
+        </p>
+    `;
+
+
+    element.innerHTML = html;
+
+    element.style.display = "block";
+
+}
+
+</script>
+
+</body>
+</html>
